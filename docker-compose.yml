@@ -1,0 +1,39 @@
+services:
+
+  db:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=myodoo
+      - POSTGRES_USER=odoo
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    
+  odoo:
+    build:
+      context: ./odoo
+      dockerfile: Dockerfile
+    ports:
+      - "8069:8069"
+    depends_on:
+      - db
+    volumes:
+      - odoo_data:/var/lib/odoo
+    #  - ./config/.odoorc:~/.odoorc
+    #  - ./addons:/mnt/extra-addons
+
+  proxy:
+    build:
+      context: ./proxy
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - odoo
+
+volumes:
+  odoo_data:
+  db_data:

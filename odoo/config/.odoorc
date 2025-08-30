@@ -1,0 +1,4 @@
+[options]
+db_user=odoo
+dbfilter=odoo
+db_name=odoo
