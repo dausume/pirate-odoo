@@ -1,0 +1,28 @@
+# ======================
+# Docker / Compose
+# ======================
+*.log
+*.pid
+*.seed
+*.pyc
+__pycache__/
+
+# Ignore local override files
+docker-compose.override.yml
+
+# ======================
+# Odoo / Postgres data
+# ======================
+db/data/
+odoo/data/
+proxy/data/
+
+# Odoo filestore (inside /var/lib/odoo, mapped to odoo_data volume)
+filestore/
+
+# ======================
+# IDE / Editor
+# ======================
+.vscode/
+.idea/
+*.swp

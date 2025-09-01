@@ -1,39 +1,85 @@
+# We have the following services and want to ensure that
 services:
 
+  # =========================
+  # PostgreSQL 15 (Database)
+  # =========================
   db:
     build:
       context: ./db
       dockerfile: Dockerfile
-    environment:
-      - POSTGRES_DB=postgres
-      - POSTGRES_PASSWORD=myodoo
-      - POSTGRES_USER=odoo
+    container_name: pirate-db
+    #restart: unless-stopped
+    ports:
+      - "5332:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
-    
+      # Persistent database storage, so data is not lost on container recreation
+      - ./db/data:/var/lib/postgresql/data
+      # Main server config (points to include_dir and pg_hba). Read-only for safety.
+      - ./db/config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      # Client auth rules. Tighten later (e.g., to your Docker subnet). Read-only for safety.
+      - ./db/config/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      # Drop-in overrides; keeps postgresql.conf stable. Any *.conf here is loaded.
+      - ./db/config/conf.d:/etc/postgresql/conf.d:ro
+      # First-run initialization (SQL or .sh). Executed ONLY when ./db/data is empty.
+      - ./db/config/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    # Tell postgres to use your mounted config, but KEEP the entrypoint
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    command: [
+      "postgres",
+      "-c", "config_file=/etc/postgresql/postgresql.conf",
+      "-c", "hba_file=/etc/postgresql/pg_hba.conf"
+    ]
+
   odoo:
     build:
       context: ./odoo
       dockerfile: Dockerfile
-    ports:
-      - "8069:8069"
+    container_name: pirate-odoo
     depends_on:
       - db
-    volumes:
-      - odoo_data:/var/lib/odoo
-    #  - ./config/.odoorc:~/.odoorc
-    #  - ./addons:/mnt/extra-addons
-
-  proxy:
-    build:
-      context: ./proxy
-      dockerfile: Dockerfile
+    #restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - odoo
+      - "8069:8069"
+      - "8072:8072"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8069/web/login >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    # Mount volumes for persistence and customizations
+    volumes:
+      # Persistent Odoo data, so data is not lost on container recreation
+      - odoo_data:/var/lib/odoo            # <-- use named volume, so docker can manage permissions
+      # Main config file, read-only
+      - ./odoo/config/.odoorc:/etc/odoo/.odoorc:ro
+      # Custom modules, read-only
+      - ./odoo/components:/mnt/extra-addons:ro
+      # Custom scripts, read-only
+      - ./odoo/scripts:/opt/odoo/scripts:ro
+    # Use custom config file, but KEEP the entrypoint
+    entrypoint: ["/usr/local/bin/odoo-entrypoint.sh"]
+    command: ["/usr/bin/odoo", "-c", "/etc/odoo/.odoorc"]
+
+  #proxy:
+  #  build:
+  #    context: ./proxy
+  #    dockerfile: Dockerfile
+  #  container_name: pirate-odoo-proxy
+  #  restart: unless-stopped
+  #  ports:
+  #    - "80:80"
+  #    - "443:443"
+  #  depends_on:
+  #    - odoo
+  # # mount your nginx.conf if you have it:
+  #  volumes:
+  #    - ./proxy/config/nginx.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   odoo_data:
-  db_data:

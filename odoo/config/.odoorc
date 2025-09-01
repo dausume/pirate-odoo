@@ -1,4 +1,34 @@
 [options]
-db_user=odoo
-dbfilter=odoo
-db_name=odoo
+; Database
+# Host container name so that this works on docker-compose network
+db_host = db
+# Postgres port exposed by the container
+db_port = 5432
+# User as defined in init SQL scripts
+db_user = odoo-server
+# Password as defined in init SQL scripts 00-create-roles.sql
+db_password = password
+# Default DB name, can be overridden with --database option
+# Change to 'False' to disable DB auto-creation, and enable multi-DB mode
+db_name = odoo
+# dbfilter = ^odoo$ ; Filter by a prefix of 'odoo' to get only DBs starting with 'odoo'
+# Master password for managing Odoo from the UI
+# Username: admin, Password: admin_passwd (as defined below)
+admin_passwd = change-me
+
+; Addons
+#addons_path = /usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons
+
+; Server
+proxy_mode = True
+limit_time_cpu = 600
+limit_time_real = 1200
+limit_memory_soft = 2147483648
+limit_memory_hard = 2684354560
+
+; Logging
+log_level = info
+logfile = None
+
+; gevent_port
+gevent_port = 8072
